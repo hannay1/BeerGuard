@@ -137,13 +137,13 @@ This can be deduced with manual testing.
 
 ## Security analysis
 
-```markdown
 Here is an overview of the possible security flaws that may present themselves:
+
 | Component name | Category of vulnerability | Issue Description | Mitigation |
 |----------------|---------------------------|-------------------|------------|
 | MetaWear C board | Denial of service | A malicious user may be able to facilitate a forced disconnect between the MetaWear C board and the BeerGuard app | Redundancy checks & periodic callbacks to re-connect the board with the app may be implemented if testing reveals an easy way to force a disconnect between the board and the app|
 | BeerGuard App - Temperature polling and/or accelerometer reporting activities | Losses to data integrity | A malicious user may be able to introduce false information regarding temperature or accelerometer data to the BeerGuard App | The source of all temperature/accelerometer data will be verified to only originate from the specific MetaWear C board, either by session ID or MAC address of the board itself |
 
-```
+
 
 
