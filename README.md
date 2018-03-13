@@ -102,18 +102,25 @@ A standard Android phone running a minimum of Android 4.3 - the earliest release
 As a user, I want to  be able to set an ideal temperature for my beverage so I may feel safe in the knowledge
 that my drink is cooling properly & under supervision.
 
+**Acceptance Criteria:**
+* Must work when the beer is in a fridge, or ice bucket
+* Must allow for a reasonably accurate starting/stopping functionality to signify that a beer is being cooled/has been cooled to the user's linking
+
 ## User story: Temperature control
 As a user, I want to use the BeerGuard application so I can be notified when my beer is at an 
 acceptable temperature.
 
-## User story: Anti-theft
-As a user, I want to be notified if my beer is removed from the 
-fridge/ice bucket before the cooling period is over, which would be indicative of someone
-trying to take my beer
-
 **Acceptance Criteria:**
 * Must work when the beer is in a fridge, or ice bucket
 * Must report the temperature of the ambient surroundings to a reasonable degree
+
+## User story: Anti-theft
+As a user, I want to be notified if my beer is removed from the 
+fridge/ice bucket before the cooling period is over, which would be indicative of someone
+trying to take my beer.
+
+**Acceptance Criteria:**
+* Must work when the beer is in a fridge, or ice bucket
 * Must report any significant fluctuations in accelerometer data from the sensor
 
 
