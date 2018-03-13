@@ -74,7 +74,7 @@ accelerometer data will start streaming from the board to the application during
 ### Main Activity
 MainActivity.java will link the subsequent activities together:
 
-#### Set/start/display beverage temperature activity
+#### Set/start/display beverage temperature activity & NotifyUser activity
 This activity will allow users to set an ideal temperature for their beer, in Fahrenheit or Celsius.
 Once this is set, the app will interface with the MetaWear Android API through the activities described below
 to display the current temperature of the beer. The user will receive a toast notification once the API
