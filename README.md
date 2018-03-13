@@ -29,12 +29,12 @@ fridge before the board reports the desired temperature.
 custom temperatures to be set. 
 
 
-##Merit to society
+## Merit to society
 * This project will relieve party goers of undue stress & trauma stemming from
 any uncertainty they may have about the security and temperature of their beer whilst left to cool
 in alien and potentially hostile environments. 
 
-##Potential issues
+## Potential issues
 * Prevent the anti-theft functionality from being triggered by innocuous movements. As in, 
 theft warnings should not be set off via a "hair trigger" that is invoked upon the merest of
 movements, such as another party patron accidentally knocking over bottles in the fridge/ice bucket as 
@@ -42,18 +42,18 @@ they search for their own drink. This should be accomplished by setting appropri
 boundaries for accelerometer data during streaming.
 
 
-*ensure that the BLE signal is able to be picked up through the relatively thick walls of a 
+* ensure that the BLE signal is able to be picked up through the relatively thick walls of a 
 common household fridge without significant delay/loss of data integrity. If this is not
 possible, then the scope of the project will be reduced to only being applicable when the 
 drinks are being store in an open-air ice bucket (which is not entirely unrealistic).
 
-*ensuring that the temperature of the ambient surroundings really is indicative of the temperature of the beer. 
+* ensuring that the temperature of the ambient surroundings really is indicative of the temperature of the beer. 
 This will be accomplished through ample manual testing beforehand with a standard thermometer, 
 standard ice-bucket/fridge, and standard beer
 
-*ensuring that the user becomes aware should connectivity with the MetaWearC board drop for whatever reason.
+* ensuring that the user becomes aware should connectivity with the MetaWearC board drop for whatever reason.
 
-*ensuring that the application does not drain excessive amounts of battery life of the Android
+* ensuring that the application does not drain excessive amounts of battery life of the Android
 phone whilst polling temperature data/streaming accelerometer data.
 
 
@@ -134,7 +134,7 @@ on every new "cooling" phase
 This can be deduced with manual testing.
 
 
-```markdown
+
 ## Security analysis
 
 Here is an overview of the possible security flaws that may present themselves:
@@ -142,6 +142,6 @@ Here is an overview of the possible security flaws that may present themselves:
 |----------------|---------------------------|-------------------|------------|
 | MetaWear C board | Denial of service | A malicious user may be able to facilitate a forced disconnect between the MetaWear C board and the BeerGuard app | Redundancy checks & periodic callbacks to re-connect the board with the app may be implemented if testing reveals an easy way to force a disconnect between the board and the app|
 | BeerGuard App - Temperature polling and/or accelerometer reporting activities | Losses to data integrity | A malicious user may be able to introduce false information regarding temperature or accelerometer data to the BeerGuard App | The source of all temperature/accelerometer data will be verified to only originate from the specific MetaWear C board, either by session ID or MAC address of the board itself |
-```
+
 
 
