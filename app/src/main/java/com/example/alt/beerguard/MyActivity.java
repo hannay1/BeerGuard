@@ -36,7 +36,19 @@ import com.mbientlab.metawear.module.Temperature;
 
 
 /*
-create activity intent
+
+I messed up the second milestone. Got swamped with other projects, did not anticipate the issues I came across for this project in time.
+
+Basically this:
+
+* has basic accelerometer functionality, basically lifted from the FreeFall demo app
+* basic temperature reading, done once every minute via ScheduledExecutorService
+* an attempt was made to get vibration working once the temperature get's cold enough, but that does not work.
+* has no real functionality on the phone, only console logs
+
+
+I'll make sure it's good to go for milestone 3.
+
  */
 
 import java.util.concurrent.Executors;
