@@ -71,13 +71,12 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             @Override
             public void onClick(View v) {
                 Log.i("beerguard", "start");
+                // start accelerometer
                 accelerometer.acceleration().start();
                 accelerometer.start();
+                //start scheduled (1 min) temp reading
                 ScheduledExecutorService read_temp = Executors.newScheduledThreadPool(1);
                 read_temp.scheduleAtFixedRate(run_temp, 0, 1, TimeUnit.MINUTES);
-
-
-
             }
         });
         findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
@@ -119,7 +118,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     }
 
-
+    //retrieving board/accelerometer. Taken from the FreeFall demo app at https://mbientlab.com/tutorials/SDKs.html#freefall-app
     private void retrieveBoard(String mac_addr) {
         final BluetoothManager btManager=
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
@@ -171,6 +170,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     }
 
+    // temperature reading/vibration
     private void readTemp()
     {
         final Temperature temperature = board.getModule(Temperature.class);
