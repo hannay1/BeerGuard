@@ -1,5 +1,10 @@
 package com.example.alt.beerguard;
 
+import android.annotation.TargetApi;
+import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.ComponentName;
@@ -12,6 +17,8 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.support.annotation.RequiresApi;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -48,7 +55,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     private final String mac_addr = "F1:51:4D:F3:B9:AC";
     private Accelerometer accelerometer;
     private Runnable run_temp;
-    private String saved_temp;
+    public String saved_temp;
     private Handler hand;
 
     @Override
@@ -56,6 +63,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
         celc = findViewById(R.id.temperature_print);
+        hand = new Handler();
 
         findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -64,19 +72,17 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 // start accelerometer
                 accelerometer.acceleration().start();
                 accelerometer.start();
-                hand = new Handler();
-                run_temp = new Runnable() {
+
+                int delay = 60000;
+                hand.postDelayed(new Runnable() {
                     @Override
                     public void run() {
                         readTemp();
-                        hand.postDelayed(run_temp, 1000);
-
+                        celc.setText(saved_temp);
+                        hand.postDelayed(run_temp, delay);
 
                     }
-                };
-
-
-
+                }, delay);
 
             }
         });
@@ -185,14 +191,29 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     }
 
+
+
     private void alertUser()
     {
-        final Vibrator vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        if (Build.VERSION_CODES.O <= Build.VERSION.SDK_INT) {
-            vibe.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
-        }
-        Intent beer_done = new Intent(this, BeerDone.class);
-        startActivity(beer_done);
+        //final Vibrator vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+
+        //vibe.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
+
+        //Intent beer_done = new Intent(this, BeerDone.class);
+        //startActivity(beer_done);
+
+        NotificationCompat.Builder mBuidler = new NotificationCompat.Builder(this)
+                .setSmallIcon(R.drawable.notification_icon)
+                .setContentTitle("BeerGuard")
+                .setContentText("Beer Time.");
+       Intent notificationIntent = new Intent(this, MyActivity.class);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        mBuidler.setContentIntent(contentIntent);
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.notify(001, mBuidler.build());
+
+
+
 
     }
 
@@ -200,6 +221,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     // temperature reading/vibration
     public void readTemp()
     {
+
+
 
         final Temperature temperature = board.getModule(Temperature.class);
         final Temperature.Sensor temp_sensor = temperature.findSensors(Temperature.SensorType.PRESET_THERMISTOR)[0];
@@ -222,7 +245,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                             //accelerometer.acceleration().stop();
                             alertUser();
                         }
-                        saved_temp = data.value(Float.class).toString();
+                        MyActivity.this.saved_temp = data.value(Float.class).toString();
 
 
                     }
