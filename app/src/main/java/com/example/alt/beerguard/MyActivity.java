@@ -8,13 +8,14 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
-import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 
 
 import com.mbientlab.metawear.Data;
@@ -27,29 +28,10 @@ import com.mbientlab.metawear.builder.RouteComponent;
 import com.mbientlab.metawear.builder.filter.Comparison;
 import com.mbientlab.metawear.builder.filter.ThresholdOutput;
 import com.mbientlab.metawear.builder.function.Function1;
-import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.module.Accelerometer;
-import com.mbientlab.metawear.module.Logging;
 import com.mbientlab.metawear.module.Temperature;
 
 
-
-
-/*
-
-I messed up the second milestone. Got swamped with other projects, did not anticipate the issues I came across for this project in time.
-
-Basically this:
-
-* has basic accelerometer functionality, basically lifted from the FreeFall demo app
-* basic temperature reading, done once every minute via ScheduledExecutorService
-* an attempt was made to get vibration working once the temperature get's cold enough, but that does not work.
-* has no real functionality on the phone, only console logs
-
-
-I'll make sure it's good to go for milestone 3.
-
- */
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -59,36 +41,43 @@ import bolts.Continuation;
 import bolts.Task;
 public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
+    private TextView celc;
     private BtleService.LocalBinder serviceBinder;
+    private MyNotifications mynotes;
     private MetaWearBoard board;
+    private final String mac_addr = "F1:51:4D:F3:B9:AC";
     private Accelerometer accelerometer;
-    private Runnable run_temp = new Runnable() {
-        @Override
-        public void run() {
-            readTemp();
-        }
-    };
+    private Runnable run_temp;
+    private String saved_temp;
+    private Handler hand;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
-
-        // Bind the service when the activity is created
-        getApplicationContext().bindService(new Intent(this, BtleService.class),
-                this, Context.BIND_AUTO_CREATE);
+        celc = findViewById(R.id.temperature_print);
 
         findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
-
             @Override
             public void onClick(View v) {
                 Log.i("beerguard", "start");
                 // start accelerometer
                 accelerometer.acceleration().start();
                 accelerometer.start();
-                //start scheduled (1 min) temp reading
-                ScheduledExecutorService read_temp = Executors.newScheduledThreadPool(1);
-                read_temp.scheduleAtFixedRate(run_temp, 0, 1, TimeUnit.MINUTES);
+                hand = new Handler();
+                run_temp = new Runnable() {
+                    @Override
+                    public void run() {
+                        readTemp();
+                        hand.postDelayed(run_temp, 1000);
+
+
+                    }
+                };
+
+
+
+
             }
         });
         findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
@@ -105,7 +94,11 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 board.tearDown();
             }
         });
+
+        getApplicationContext().bindService(new Intent(this, BtleService.class),
+                this, Context.BIND_AUTO_CREATE);
     }
+
 
 
     @Override
@@ -120,18 +113,27 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     public void onServiceConnected(ComponentName name, IBinder service) {
         serviceBinder = (BtleService.LocalBinder) service;
         Log.i("beerguard", "Service Connected");
-        retrieveBoard("F1:51:4D:F3:B9:AC");
+        retrieveBoard(mac_addr);
 
 
     }
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
+        accelerometer.stop();
+        accelerometer.acceleration().stop();
+        this.board.disconnectAsync().continueWith(new Continuation<Void, Void>() {
+            @Override
+            public Void then(Task<Void> task) throws Exception {
+                Log.i("beerguard", "Service Disconnected");
+                return null;
+            }
+        });
 
     }
 
     //retrieving board/accelerometer. Taken from the FreeFall demo app at https://mbientlab.com/tutorials/SDKs.html#freefall-app
-    private void retrieveBoard(String mac_addr) {
+    private void retrieveBoard(final String mac_addr) {
         final BluetoothManager btManager=
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         final BluetoothDevice remoteDevice=
@@ -154,7 +156,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                         source.map(Function1.RSS).average((byte) 4).filter(ThresholdOutput.BINARY, 0.80f).multicast().to().filter(Comparison.EQ, -1).stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
-                                Log.i("beerguard", "theft");
+                                Log.i("beerguard", "theft!!!!!");
+
                             }
                         }).to().filter(Comparison.EQ, 1).stream(new Subscriber() {
                             @Override
@@ -182,39 +185,57 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     }
 
-    // temperature reading/vibration
-    private void readTemp()
+    private void alertUser()
     {
+        final Vibrator vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        if (Build.VERSION_CODES.O <= Build.VERSION.SDK_INT) {
+            vibe.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
+        }
+        Intent beer_done = new Intent(this, BeerDone.class);
+        startActivity(beer_done);
+
+    }
+
+
+    // temperature reading/vibration
+    public void readTemp()
+    {
+
         final Temperature temperature = board.getModule(Temperature.class);
         final Temperature.Sensor temp_sensor = temperature.findSensors(Temperature.SensorType.PRESET_THERMISTOR)[0];
-        final Vibrator vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+
 
         temp_sensor.addRouteAsync(new RouteBuilder() {
             @Override
             public void configure(RouteComponent source) {
                 source.stream(new Subscriber() {
+
+
                     @Override
                     public void apply(Data data, Object... env) {
-                        Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class));
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                        {
-                            if(data.value(Float.class) < 25.0)
-                            {
-                                vibe.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
-                            }
+                        Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class).toString());
+
+
+                        if(data.value(Float.class).floatValue() < 50.0) {
+                            Log.i("beerguard", "[!] BEER IS READY");
+                            //accelerometer.stop();
+                            //accelerometer.acceleration().stop();
+                            alertUser();
                         }
+                        saved_temp = data.value(Float.class).toString();
+
 
                     }
                 });
             }
         }).continueWith(new Continuation<Route, Void>() {
-
             @Override
             public Void then(Task<Route> task) throws Exception {
                 temp_sensor.read();
                 return null;
             }
         });
+
 
     }
 
