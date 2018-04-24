@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-xmlns:app="http://schemas.android.com/apk/res-auto"
-xmlns:tools="http://schemas.android.com/tools"
-android:layout_width="match_parent"
-android:layout_height="match_parent"
-tools:context="com.example.alt.beerguard.MyActivity">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.alt.beerguard.MyActivity">
 
     <Button
         android:id="@+id/start"
@@ -12,7 +12,8 @@ tools:context="com.example.alt.beerguard.MyActivity">
         android:layout_height="wrap_content"
         android:text="start"
         tools:layout_editor_absoluteX="135dp"
-        tools:layout_editor_absoluteY="27dp" />
+        tools:layout_editor_absoluteY="27dp"
+        tools:ignore="MissingConstraints" />
 
     <Button
         android:id="@+id/stop"
@@ -20,16 +21,17 @@ tools:context="com.example.alt.beerguard.MyActivity">
         android:layout_height="wrap_content"
         android:text="stop"
         app:layout_constraintTop_toBottomOf="@+id/start"
-        tools:layout_editor_absoluteX="135dp" />
+        tools:layout_editor_absoluteX="135dp"
+        tools:ignore="MissingConstraints" />
 
     <Button
         android:id="@+id/reset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
         android:text="reset"
         app:layout_constraintTop_toBottomOf="@+id/stop"
         tools:layout_editor_absoluteX="135dp" />
+
 
     <TextView
         android:id="@+id/temperature_view"

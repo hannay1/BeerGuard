@@ -2,6 +2,7 @@ package com.example.alt.beerguard;
 
 import android.annotation.TargetApi;
 import android.app.AlarmManager;
+import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -11,14 +12,17 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -48,15 +52,16 @@ import bolts.Continuation;
 import bolts.Task;
 public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
+
     private TextView celc;
     private BtleService.LocalBinder serviceBinder;
-    private MyNotifications mynotes;
     private MetaWearBoard board;
     private final String mac_addr = "F1:51:4D:F3:B9:AC";
     private Accelerometer accelerometer;
     private Runnable run_temp;
     public String saved_temp;
     private Handler hand;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +78,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 accelerometer.acceleration().start();
                 accelerometer.start();
 
-                int delay = 60000;
+                int delay = 1000;
                 hand.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -112,6 +117,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         super.onDestroy();
 
         // Unbind the service when the activity is destroyed
+
         getApplicationContext().unbindService(this);
     }
 
@@ -119,7 +125,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     public void onServiceConnected(ComponentName name, IBinder service) {
         serviceBinder = (BtleService.LocalBinder) service;
         Log.i("beerguard", "Service Connected");
-        retrieveBoard(mac_addr);
+        this.retrieveBoard(this.mac_addr);
 
 
     }
@@ -138,6 +144,16 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     }
 
+    private void vibe()
+    {
+        Vibrator vib = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        vib.vibrate(5000);
+    }
+
+
+
+
+
     //retrieving board/accelerometer. Taken from the FreeFall demo app at https://mbientlab.com/tutorials/SDKs.html#freefall-app
     private void retrieveBoard(final String mac_addr) {
         final BluetoothManager btManager=
@@ -145,6 +161,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         final BluetoothDevice remoteDevice=
                 btManager.getAdapter().getRemoteDevice(mac_addr);
 
+        MediaPlayer mp = MediaPlayer.create(this, R.raw.alarm);
         // Create a MetaWear board object for the Bluetooth Device
         board= serviceBinder.getMetaWearBoard(remoteDevice);
         board.connectAsync().onSuccessTask(new Continuation<Void, Task<Route>>() {
@@ -163,6 +180,12 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                             @Override
                             public void apply(Data data, Object... env) {
                                 Log.i("beerguard", "theft!!!!!");
+
+                                vibe();
+                                mp.start();
+                                beer_note("[!] POTENTIAL BEER THEFT");
+
+
 
                             }
                         }).to().filter(Comparison.EQ, 1).stream(new Subscriber() {
@@ -192,42 +215,48 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     }
 
 
-
-    private void alertUser()
+    private void beer_note(String dialog)
     {
-        //final Vibrator vibe = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-
-        //vibe.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
-
-        //Intent beer_done = new Intent(this, BeerDone.class);
-        //startActivity(beer_done);
-
-        NotificationCompat.Builder mBuidler = new NotificationCompat.Builder(this)
-                .setSmallIcon(R.drawable.notification_icon)
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, "1")
+                .setSmallIcon(R.drawable.ic_launcher_background)
                 .setContentTitle("BeerGuard")
-                .setContentText("Beer Time.");
-       Intent notificationIntent = new Intent(this, MyActivity.class);
-        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        mBuidler.setContentIntent(contentIntent);
-        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        mNotificationManager.notify(001, mBuidler.build());
+                .setContentText(dialog)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
+        NotificationManagerCompat n_manager = NotificationManagerCompat.from(this);
+        n_manager.notify(1, mBuilder.build());
+    }
 
+    private void alarm_sound()
+    {
+
+        MediaPlayer mp = MediaPlayer.create(this, R.raw.alarm);
+        CountDownTimer ctd = new CountDownTimer(30000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                mp.start();
+            }
+
+            @Override
+            public void onFinish() {
+                mp.stop();
+
+            }
+        };
+        ctd.start();
 
 
     }
 
 
+
+
+
     // temperature reading/vibration
     public void readTemp()
     {
-
-
-
         final Temperature temperature = board.getModule(Temperature.class);
         final Temperature.Sensor temp_sensor = temperature.findSensors(Temperature.SensorType.PRESET_THERMISTOR)[0];
-
-
         temp_sensor.addRouteAsync(new RouteBuilder() {
             @Override
             public void configure(RouteComponent source) {
@@ -239,11 +268,11 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                         Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class).toString());
 
 
-                        if(data.value(Float.class).floatValue() < 50.0) {
+                        if(data.value(Float.class).floatValue() < 20.0) {
                             Log.i("beerguard", "[!] BEER IS READY");
-                            //accelerometer.stop();
-                            //accelerometer.acceleration().stop();
-                            alertUser();
+                            accelerometer.stop();
+                            accelerometer.acceleration().stop();
+                            beer_note("[*] BEER IS READY :)");
                         }
                         MyActivity.this.saved_temp = data.value(Float.class).toString();
 
@@ -261,5 +290,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
 
     }
+
+
+
 
 }

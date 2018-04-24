@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.alt.beerguard">
 
+
     <uses-permission android:name="android.permission.VIBRATE" />
     <application
         android:allowBackup="true"
@@ -18,13 +19,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".NotificationView"
-            android:label="Details of notification"
-            android:parentActivityName=".MyActivity">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".MyActivity"/>
-        </activity>
+        <service android:name=".BeerService" />
     </application>
 
 </manifest>
