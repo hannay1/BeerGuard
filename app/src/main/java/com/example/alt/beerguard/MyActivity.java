@@ -56,12 +56,13 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     private TextView celc;
     private BtleService.LocalBinder serviceBinder;
     private MetaWearBoard board;
+    public NotificationView my_note_view = new NotificationView();
     private final String mac_addr = "F1:51:4D:F3:B9:AC";
     private Accelerometer accelerometer;
     private Runnable run_temp;
     public String saved_temp;
     private Handler hand;
-
+    public boolean is_configured = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,8 +76,18 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             public void onClick(View v) {
                 Log.i("beerguard", "start");
                 // start accelerometer
-                accelerometer.acceleration().start();
-                accelerometer.start();
+
+                if (is_configured)
+                {
+                    accelerometer.acceleration().start();
+                    accelerometer.start();
+
+                }
+
+
+
+
+                /*     */
 
                 int delay = 1000;
                 hand.postDelayed(new Runnable() {
@@ -88,6 +99,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
                     }
                 }, delay);
+
+
 
             }
         });
@@ -163,7 +176,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
         MediaPlayer mp = MediaPlayer.create(this, R.raw.alarm);
         // Create a MetaWear board object for the Bluetooth Device
-        board= serviceBinder.getMetaWearBoard(remoteDevice);
+        board = serviceBinder.getMetaWearBoard(remoteDevice);
         board.connectAsync().onSuccessTask(new Continuation<Void, Task<Route>>() {
             @Override
             public Task<Route> then(Task<Void> task) throws Exception {
@@ -176,7 +189,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 return accelerometer.acceleration().addRouteAsync(new RouteBuilder() {
                     @Override
                     public void configure(RouteComponent source) {
-                        source.map(Function1.RSS).average((byte) 4).filter(ThresholdOutput.BINARY, 0.80f).multicast().to().filter(Comparison.EQ, -1).stream(new Subscriber() {
+                        source.map(Function1.RSS).average((byte) 4).filter(ThresholdOutput.BINARY, 0.01f).multicast().to().filter(Comparison.EQ, -1).stream(new Subscriber() {
                             @Override
                             public void apply(Data data, Object... env) {
                                 Log.i("beerguard", "theft!!!!!");
@@ -204,9 +217,21 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             public Void then(Task<Route> task) throws Exception {
                 if (task.isFaulted()){
                     Log.w("beerguard", "Failed to configure app, " + task.getError());
+                    is_configured = false;
+                    /*
+                    have a try/catch here for this error:
+
+                    Failed to configure app, java.util.concurrent.TimeoutException: Did not receive data processor id within 1000ms
+
+
+
+
+                     */
                 }else
                 {
                     Log.i("beerguard", "App successfully configured");
+                    is_configured = true;
+
                 }
                 return null;
             }
@@ -221,7 +246,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 .setSmallIcon(R.drawable.ic_launcher_background)
                 .setContentTitle("BeerGuard")
                 .setContentText(dialog)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true);
 
         NotificationManagerCompat n_manager = NotificationManagerCompat.from(this);
         n_manager.notify(1, mBuilder.build());
