@@ -77,28 +77,20 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 Log.i("beerguard", "start");
                 // start accelerometer
 
-                if (is_configured)
-                {
+                if (is_configured) {
                     accelerometer.acceleration().start();
                     accelerometer.start();
+                    int delay = 1000;
+                    hand.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            readTemp();
+                            celc.setText(saved_temp);
+                            hand.postDelayed(run_temp, delay);
 
+                        }
+                    }, delay);
                 }
-
-
-
-
-                /*     */
-
-                int delay = 1000;
-                hand.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        readTemp();
-                        celc.setText(saved_temp);
-                        hand.postDelayed(run_temp, delay);
-
-                    }
-                }, delay);
 
 
 
@@ -132,6 +124,14 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         // Unbind the service when the activity is destroyed
 
         getApplicationContext().unbindService(this);
+        this.board.disconnectAsync().continueWith(new Continuation<Void, Void>() {
+            @Override
+            public Void then(Task<Void> task) throws Exception {
+                Log.i("beerguard", "Service Disconnected");
+                return null;
+            }
+        });
+
     }
 
     @Override
@@ -147,20 +147,14 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     public void onServiceDisconnected(ComponentName name) {
         accelerometer.stop();
         accelerometer.acceleration().stop();
-        this.board.disconnectAsync().continueWith(new Continuation<Void, Void>() {
-            @Override
-            public Void then(Task<Void> task) throws Exception {
-                Log.i("beerguard", "Service Disconnected");
-                return null;
-            }
-        });
+
 
     }
 
     private void vibe()
     {
         Vibrator vib = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        vib.vibrate(5000);
+        vib.vibrate(1000);
     }
 
 
@@ -221,7 +215,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     /*
                     have a try/catch here for this error:
 
-                    Failed to configure app, java.util.concurrent.TimeoutException: Did not receive data processor id within 1000ms
+                    W/beerguard: Failed to configure app, java.util.concurrent.TimeoutException: Did not receive data processor id within 1000ms
 
 
 
