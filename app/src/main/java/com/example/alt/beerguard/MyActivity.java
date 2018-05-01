@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.media.MediaPlayer;
@@ -47,6 +48,7 @@ import com.mbientlab.metawear.module.Temperature;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import bolts.Continuation;
 import bolts.Task;
@@ -62,7 +64,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     private Runnable run_temp;
     public String saved_temp;
     private Handler hand;
-    public boolean is_configured = false;
+    public boolean is_configured;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,7 +79,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 Log.i("beerguard", "start");
                 // start accelerometer
 
-                if (is_configured) {
+                try {
                     accelerometer.acceleration().start();
                     accelerometer.start();
                     int delay = 1000;
@@ -90,6 +92,15 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
                         }
                     }, delay);
+                    // }else
+                    //{
+                    // bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
+
+                    //}
+                }catch(java.lang.NullPointerException npe)
+                {
+                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
+
                 }
 
 
@@ -100,19 +111,49 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             @Override
             public void onClick(View v) {
                 Log.i("beerguard", "stop");
-                accelerometer.stop();
-                accelerometer.acceleration().stop();
+                try {
+                    accelerometer.stop();
+                    accelerometer.acceleration().stop();
+                }catch(java.lang.NullPointerException npe){
+                    Log.i("beerguard", "Perhaps bluetooth is off? ");
+                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
+
+
+                }
             }
         });
-        findViewById(R.id.reset).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.exit).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 board.tearDown();
+                finish();
+                System.exit(0);
             }
         });
 
         getApplicationContext().bindService(new Intent(this, BtleService.class),
                 this, Context.BIND_AUTO_CREATE);
+    }
+
+
+    public void bluetooth_alert(String title_alert, String message)
+    {
+        AlertDialog.Builder builder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            builder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+        } else {
+            builder = new AlertDialog.Builder(this);
+        }
+        builder.setTitle(title_alert)
+                .setMessage(message)
+                .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                    }
+                })
+                .setIcon(R.drawable.ic_launcher_background)
+                .show();
     }
 
 
@@ -138,7 +179,19 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     public void onServiceConnected(ComponentName name, IBinder service) {
         serviceBinder = (BtleService.LocalBinder) service;
         Log.i("beerguard", "Service Connected");
-        this.retrieveBoard(this.mac_addr);
+        try {
+            this.retrieveBoard(this.mac_addr);
+        } catch (TimeoutException e) {
+            Log.i("beerguard", "Board messed up");
+            finish();
+            System.exit(0);
+            Intent restart_intent = getBaseContext().getPackageManager()
+                    .getLaunchIntentForPackage(getBaseContext().getPackageName());
+            restart_intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(restart_intent);
+
+
+        }
 
 
     }
@@ -162,15 +215,16 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
 
     //retrieving board/accelerometer. Taken from the FreeFall demo app at https://mbientlab.com/tutorials/SDKs.html#freefall-app
-    private void retrieveBoard(final String mac_addr) {
-        final BluetoothManager btManager=
+    private void retrieveBoard(final String mac_addr) throws java.util.concurrent.TimeoutException {
+        final BluetoothManager btManager =
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        final BluetoothDevice remoteDevice=
+        final BluetoothDevice remoteDevice =
                 btManager.getAdapter().getRemoteDevice(mac_addr);
 
         MediaPlayer mp = MediaPlayer.create(this, R.raw.alarm);
         // Create a MetaWear board object for the Bluetooth Device
         board = serviceBinder.getMetaWearBoard(remoteDevice);
+        is_configured = false;
         board.connectAsync().onSuccessTask(new Continuation<Void, Task<Route>>() {
             @Override
             public Task<Route> then(Task<Void> task) throws Exception {
@@ -193,7 +247,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                 beer_note("[!] POTENTIAL BEER THEFT");
 
 
-
                             }
                         }).to().filter(Comparison.EQ, 1).stream(new Subscriber() {
                             @Override
@@ -209,20 +262,12 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         }).continueWith(new Continuation<Route, Void>() {
             @Override
             public Void then(Task<Route> task) throws Exception {
-                if (task.isFaulted()){
+                if (task.isFaulted()) {
                     Log.w("beerguard", "Failed to configure app, " + task.getError());
                     is_configured = false;
-                    /*
-                    have a try/catch here for this error:
-
-                    W/beerguard: Failed to configure app, java.util.concurrent.TimeoutException: Did not receive data processor id within 1000ms
 
 
-
-
-                     */
-                }else
-                {
+                } else {
                     Log.i("beerguard", "App successfully configured");
                     is_configured = true;
 

@@ -25,12 +25,13 @@
         tools:ignore="MissingConstraints" />
 
     <Button
-        android:id="@+id/reset"
+        android:id="@+id/exit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="reset"
+        android:text="exit"
         app:layout_constraintTop_toBottomOf="@+id/stop"
-        tools:layout_editor_absoluteX="135dp" />
+        tools:layout_editor_absoluteX="135dp"
+        tools:ignore="MissingConstraints" />
 
 
     <TextView
@@ -39,8 +40,9 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Temperature (°C)"
-        app:layout_constraintTop_toBottomOf="@+id/reset"
-        tools:layout_editor_absoluteX="128dp" />
+        app:layout_constraintTop_toBottomOf="@+id/exit"
+        tools:layout_editor_absoluteX="128dp"
+        tools:ignore="MissingConstraints" />
 
     <TextView
         android:id="@+id/temperature_print"
@@ -49,7 +51,8 @@
         android:layout_marginTop="16dp"
         android:text="No beer yet..."
         app:layout_constraintTop_toBottomOf="@+id/temperature_view"
-        tools:layout_editor_absoluteX="141dp" />
+        tools:layout_editor_absoluteX="141dp"
+        tools:ignore="MissingConstraints" />
 
 
 </android.support.constraint.ConstraintLayout>
