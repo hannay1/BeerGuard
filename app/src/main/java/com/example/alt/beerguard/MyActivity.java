@@ -19,6 +19,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.support.annotation.RequiresApi;
@@ -58,21 +59,20 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     private TextView celc;
     private BtleService.LocalBinder serviceBinder;
     private MetaWearBoard board;
-    public NotificationView my_note_view = new NotificationView();
     private final String mac_addr = "F1:51:4D:F3:B9:AC";
     private Accelerometer accelerometer;
     private Runnable run_temp;
     public String saved_temp;
     private Handler hand;
-    public boolean is_configured;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
         celc = findViewById(R.id.temperature_print);
         hand = new Handler();
-
+        this.getParent();
         findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -83,7 +83,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     accelerometer.acceleration().start();
                     accelerometer.start();
                     int delay = 1000;
-                    hand.postDelayed(new Runnable() {
+                    hand.postDelayed(run_temp = new Runnable() {
                         @Override
                         public void run() {
                             readTemp();
@@ -99,6 +99,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     //}
                 }catch(java.lang.NullPointerException npe)
                 {
+
                     bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
 
                 }
@@ -136,24 +137,37 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     }
 
 
+
     public void bluetooth_alert(String title_alert, String message)
     {
-        AlertDialog.Builder builder;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            builder = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
-        } else {
-            builder = new AlertDialog.Builder(this);
-        }
-        builder.setTitle(title_alert)
-                .setMessage(message)
-                .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+        new Thread(){
+            public void run(){
+                MyActivity.this.runOnUiThread(new Runnable() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
+                    public void run() {
+                        AlertDialog.Builder builder;
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            builder = new AlertDialog.Builder(MyActivity.this, android.R.style.Theme_Material_Dialog_Alert);
+                        } else {
+                            builder = new AlertDialog.Builder(MyActivity.this);
+                        }
+                        builder.setTitle(title_alert)
+                                .setMessage(message)
+                                .setPositiveButton("k", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+
+                                    }
+                                })
+                                .setIcon(R.drawable.ic_launcher_background)
+                                .show();
 
                     }
-                })
-                .setIcon(R.drawable.ic_launcher_background)
-                .show();
+                });
+            }
+        }.start();
+
+
     }
 
 
@@ -224,7 +238,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         MediaPlayer mp = MediaPlayer.create(this, R.raw.alarm);
         // Create a MetaWear board object for the Bluetooth Device
         board = serviceBinder.getMetaWearBoard(remoteDevice);
-        is_configured = false;
+
         board.connectAsync().onSuccessTask(new Continuation<Void, Task<Route>>() {
             @Override
             public Task<Route> then(Task<Void> task) throws Exception {
@@ -246,6 +260,11 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                 mp.start();
                                 beer_note("[!] POTENTIAL BEER THEFT");
 
+                                bluetooth_alert("Beerguard: ALERT", "[!] YOUR BEER IS UNDER SIEGE");
+
+
+
+
 
                             }
                         }).to().filter(Comparison.EQ, 1).stream(new Subscriber() {
@@ -264,12 +283,19 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             public Void then(Task<Route> task) throws Exception {
                 if (task.isFaulted()) {
                     Log.w("beerguard", "Failed to configure app, " + task.getError());
-                    is_configured = false;
+
+                    /**
+                     *
+                     * problem: java.lang.IllegalStateException is sometimes called. need to catch this exception
+                     *
+                     */
+
+
 
 
                 } else {
                     Log.i("beerguard", "App successfully configured");
-                    is_configured = true;
+
 
                 }
                 return null;
@@ -333,11 +359,12 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                         Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class).toString());
 
 
-                        if(data.value(Float.class).floatValue() < 20.0) {
+                        if(data.value(Float.class).floatValue() < 10.0) {
                             Log.i("beerguard", "[!] BEER IS READY");
                             accelerometer.stop();
                             accelerometer.acceleration().stop();
                             beer_note("[*] BEER IS READY :)");
+                            bluetooth_alert("Beerguard", "[*] Your beer is ready");
                         }
                         MyActivity.this.saved_temp = data.value(Float.class).toString();
 
