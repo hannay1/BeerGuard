@@ -45,7 +45,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     private Runnable run_temp;
     public String saved_temp;
     private Handler hand;
-    private boolean shutdown;
+    private boolean already_started;
+    private boolean temp_done;
     private boolean is_there_a_current_THEFT_alert;
     private boolean is_there_a_current_TEMP_alert;
 
@@ -59,19 +60,29 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             public void onClick(View v) {
                 Log.i("beerguard", "start");
                 // start accelerometer
-                MyActivity.this.is_there_a_current_TEMP_alert = false;
-                MyActivity.this.shutdown = false;
-                if(!MyActivity.this.shutdown)
+
+
+
+                if(!MyActivity.this.already_started)
                 {
                     try {
                         accelerometer.acceleration().start();
                         accelerometer.start();
                         readTemp();
+
                     }catch(java.lang.NullPointerException npe)
                     {
                         bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
                     }
+                    MyActivity.this.already_started = true;
+                    MyActivity.this.temp_done = false;
+                    Log.i("beerguard", "already_started: true ");
+
+
+
                 }
+
+
             }
         });
         findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
@@ -81,7 +92,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 try {
                     accelerometer.stop();
                     accelerometer.acceleration().stop();
-                    MyActivity.this.shutdown = true;
+                    MyActivity.this.already_started = false;
+                    MyActivity.this.temp_done = true;
                 }catch(java.lang.NullPointerException npe){
                     Log.i("beerguard", "Perhaps bluetooth is off? ");
                     bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
@@ -91,8 +103,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         findViewById(R.id.exit).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                MyActivity.this.shutdown = false;
-                //board.tearDown();
                 finish();
                 System.exit(0);
             }
@@ -300,6 +310,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                                             @Override
                                                             public void onClick(DialogInterface dialog, int which) {
                                                                 MyActivity.this.is_there_a_current_TEMP_alert = false;
+                                                                //MyActivity.this.temp_done = true;
+
                                                                 mp.pause();
                                                             }
                                                         })
@@ -315,26 +327,36 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     }
                 });
             }
-        }).continueWith(new Continuation<Route, Void>() {
-            @Override
-            public Void then(Task<Route> task) throws Exception {
-                hand = new Handler();
-                int delay = 10000;
+        });
+
+        hand = new Handler();
+        int delay = 10000;
                 run_temp = new Runnable() {
                     @Override
                     public void run() {
                         if(!MyActivity.this.is_there_a_current_TEMP_alert)
                         {
-                            temp_sensor.read();
-                            celc.setText(saved_temp);
-                            hand.postDelayed(run_temp, delay);
+                            if(!MyActivity.this.temp_done)
+                            {
+                                temp_sensor.read();
+                                celc.setText(saved_temp);
+                                hand.postDelayed(run_temp, delay);
+
+                            }else
+                            {
+                                hand.removeCallbacks(run_temp);
+                            }
+
+
                         }
                     }
                 };
                 hand.post(run_temp);
-                return null;
-            }
-        });
-    }
+
+
+
+
+        };
+
 
 }
