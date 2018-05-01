@@ -1,58 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context="com.example.alt.beerguard.MyActivity">
-
-    <Button
-        android:id="@+id/start"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="start"
-        tools:layout_editor_absoluteX="135dp"
-        tools:layout_editor_absoluteY="27dp"
-        tools:ignore="MissingConstraints" />
-
-    <Button
-        android:id="@+id/stop"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="stop"
-        app:layout_constraintTop_toBottomOf="@+id/start"
-        tools:layout_editor_absoluteX="135dp"
-        tools:ignore="MissingConstraints" />
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    tools:context="com.example.alt.beerguard.MyActivity"
+    android:id="@+id/rl">
 
     <Button
         android:id="@+id/exit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+
+
+        android:layout_alignStart="@+id/temperature_print"
+        android:layout_below="@+id/temperature_print"
+        android:layout_marginTop="22dp"
         android:text="exit"
-        app:layout_constraintTop_toBottomOf="@+id/stop"
+        tools:ignore="MissingConstraints"
+        tools:layout_editor_absoluteX="135dp" />
+
+    <Button
+        android:id="@+id/stop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+
+        android:layout_alignStart="@+id/temperature_view"
+        android:layout_below="@+id/start"
+        android:layout_marginTop="17dp"
+        android:text="stop"
+        tools:ignore="MissingConstraints"
+        tools:layout_editor_absoluteX="135dp" />
+
+    <Button
+        android:id="@+id/start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+
+        android:layout_alignParentTop="true"
+        android:layout_alignStart="@+id/stop"
+        android:layout_marginTop="65dp"
+        android:text="start"
         tools:layout_editor_absoluteX="135dp"
-        tools:ignore="MissingConstraints" />
+        tools:layout_editor_absoluteY="27dp" />
 
 
     <TextView
         android:id="@+id/temperature_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_alignStart="@+id/temperature_print"
+        android:layout_below="@+id/stop"
+        android:layout_marginTop="25dp"
         android:text="Temperature (°C)"
-        app:layout_constraintTop_toBottomOf="@+id/exit"
-        tools:layout_editor_absoluteX="128dp"
-        tools:ignore="MissingConstraints" />
+        tools:layout_editor_absoluteX="128dp" />
 
     <TextView
         android:id="@+id/temperature_print"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/temperature_view"
+        android:layout_marginStart="138dp"
+        android:layout_marginTop="18dp"
         android:text="No beer yet..."
-        app:layout_constraintTop_toBottomOf="@+id/temperature_view"
-        tools:layout_editor_absoluteX="141dp"
-        tools:ignore="MissingConstraints" />
+        tools:layout_editor_absoluteX="141dp" />
 
 
-</android.support.constraint.ConstraintLayout>
+</RelativeLayout>

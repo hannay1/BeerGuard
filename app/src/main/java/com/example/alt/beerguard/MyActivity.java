@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,6 +20,9 @@ import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
@@ -49,7 +53,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     private boolean temp_done;
     private boolean is_there_a_current_THEFT_alert;
     private boolean is_there_a_current_TEMP_alert;
-
+    
     @Override
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
@@ -63,12 +67,15 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
 
 
+
                 if(!MyActivity.this.already_started)
                 {
                     try {
                         accelerometer.acceleration().start();
                         accelerometer.start();
                         readTemp();
+
+
 
                     }catch(java.lang.NullPointerException npe)
                     {
@@ -103,6 +110,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         findViewById(R.id.exit).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                board.tearDown();
                 finish();
                 System.exit(0);
             }
@@ -222,6 +230,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                                                 public void onClick(DialogInterface dialog, int which) {
                                                                     mp.pause();
                                                                     MyActivity.this.is_there_a_current_THEFT_alert = false;
+
                                                                 }
                                                             })
                                                             .setIcon(R.drawable.ic_launcher_background)
@@ -283,7 +292,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     @Override
                     public void apply(Data data, Object... env) {
                         Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class).toString());
-                        if(data.value(Float.class).floatValue() < 15.0) {
+                        if(data.value(Float.class).floatValue() < 10.0) {
                             Log.i("beerguard", "[!] BEER IS READY");
                             accelerometer.stop();
                             accelerometer.acceleration().stop();
@@ -310,8 +319,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                                             @Override
                                                             public void onClick(DialogInterface dialog, int which) {
                                                                 MyActivity.this.is_there_a_current_TEMP_alert = false;
-                                                                //MyActivity.this.temp_done = true;
-
                                                                 mp.pause();
                                                             }
                                                         })
@@ -327,10 +334,11 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     }
                 });
             }
-        });
-
-        hand = new Handler();
-        int delay = 10000;
+        }).continueWith(new Continuation<Route, Void>() {
+            @Override
+            public Void then(Task<Route> task) throws Exception {
+                hand = new Handler();
+                int delay = 10000;
                 run_temp = new Runnable() {
                     @Override
                     public void run() {
@@ -346,17 +354,15 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                             {
                                 hand.removeCallbacks(run_temp);
                             }
-
-
                         }
                     }
                 };
                 hand.post(run_temp);
+                return null;
+            }
+        });
 
-
-
-
-        };
+    }
 
 
 }
