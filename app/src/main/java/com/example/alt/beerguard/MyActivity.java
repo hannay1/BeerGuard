@@ -1,11 +1,7 @@
 package com.example.alt.beerguard;
 
-import android.annotation.TargetApi;
-import android.app.AlarmManager;
 import android.app.AlertDialog;
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
+import com.mbientlab.metawear.module.DataProcessor;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.ComponentName;
@@ -19,10 +15,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
-import android.os.VibrationEffect;
 import android.os.Vibrator;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -45,10 +38,6 @@ import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.Temperature;
 
 
-
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import bolts.Continuation;
@@ -64,43 +53,38 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     private Runnable run_temp;
     public String saved_temp;
     private Handler hand;
+    private boolean shutdown;
+    private boolean is_there_a_current_THEFT_alert;
+    private boolean is_there_a_current_TEMP_alert;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState){
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
         celc = findViewById(R.id.temperature_print);
-        hand = new Handler();
-        this.getParent();
+
+
+
         findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Log.i("beerguard", "start");
                 // start accelerometer
+                MyActivity.this.is_there_a_current_TEMP_alert = false;
+                MyActivity.this.shutdown = false;
 
                 try {
-                    accelerometer.acceleration().start();
-                    accelerometer.start();
-                    int delay = 1000;
-                    hand.postDelayed(run_temp = new Runnable() {
-                        @Override
-                        public void run() {
-                            readTemp();
-                            celc.setText(saved_temp);
-                            hand.postDelayed(run_temp, delay);
+                   accelerometer.acceleration().start();
+                   accelerometer.start();
+                   readTemp();
 
-                        }
-                    }, delay);
-                    // }else
-                    //{
-                    // bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
 
-                    //}
                 }catch(java.lang.NullPointerException npe)
                 {
 
-                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
+
+                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected", false, false);
 
                 }
 
@@ -115,9 +99,12 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 try {
                     accelerometer.stop();
                     accelerometer.acceleration().stop();
+                    MyActivity.this.shutdown = true;
                 }catch(java.lang.NullPointerException npe){
                     Log.i("beerguard", "Perhaps bluetooth is off? ");
-                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
+                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected", false, false);
+
+
 
 
                 }
@@ -126,7 +113,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         findViewById(R.id.exit).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                board.tearDown();
+                MyActivity.this.shutdown = false;
+                //board.tearDown();
                 finish();
                 System.exit(0);
             }
@@ -138,8 +126,9 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
 
 
-    public void bluetooth_alert(String title_alert, String message)
+    public void bluetooth_alert(String title_alert, String message, boolean stop_monitor, boolean stop_theft)
     {
+
         new Thread(){
             public void run(){
                 MyActivity.this.runOnUiThread(new Runnable() {
@@ -156,6 +145,9 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                 .setPositiveButton("k", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
+
+
+
 
                                     }
                                 })
@@ -179,13 +171,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         // Unbind the service when the activity is destroyed
 
         getApplicationContext().unbindService(this);
-        this.board.disconnectAsync().continueWith(new Continuation<Void, Void>() {
-            @Override
-            public Void then(Task<Void> task) throws Exception {
-                Log.i("beerguard", "Service Disconnected");
-                return null;
-            }
-        });
+
+
 
     }
 
@@ -193,19 +180,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     public void onServiceConnected(ComponentName name, IBinder service) {
         serviceBinder = (BtleService.LocalBinder) service;
         Log.i("beerguard", "Service Connected");
-        try {
-            this.retrieveBoard(this.mac_addr);
-        } catch (TimeoutException e) {
-            Log.i("beerguard", "Board messed up");
-            finish();
-            System.exit(0);
-            Intent restart_intent = getBaseContext().getPackageManager()
-                    .getLaunchIntentForPackage(getBaseContext().getPackageName());
-            restart_intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(restart_intent);
 
-
-        }
+        this.retrieveBoard(this.mac_addr);
 
 
     }
@@ -214,8 +190,13 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     public void onServiceDisconnected(ComponentName name) {
         accelerometer.stop();
         accelerometer.acceleration().stop();
-
-
+        this.board.disconnectAsync().continueWith(new Continuation<Void, Void>() {
+            @Override
+            public Void then(Task<Void> task) throws Exception {
+                Log.i("beerguard", "Service Disconnected");
+                return null;
+            }
+        });
     }
 
     private void vibe()
@@ -224,26 +205,19 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         vib.vibrate(1000);
     }
 
-
-
-
-
     //retrieving board/accelerometer. Taken from the FreeFall demo app at https://mbientlab.com/tutorials/SDKs.html#freefall-app
-    private void retrieveBoard(final String mac_addr) throws java.util.concurrent.TimeoutException {
+    private void retrieveBoard(final String mac_addr) {
         final BluetoothManager btManager =
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         final BluetoothDevice remoteDevice =
                 btManager.getAdapter().getRemoteDevice(mac_addr);
-
         MediaPlayer mp = MediaPlayer.create(this, R.raw.alarm);
         // Create a MetaWear board object for the Bluetooth Device
         board = serviceBinder.getMetaWearBoard(remoteDevice);
-
         board.connectAsync().onSuccessTask(new Continuation<Void, Task<Route>>() {
             @Override
             public Task<Route> then(Task<Void> task) throws Exception {
                 Log.i("beerguard", "Connected to board with " + mac_addr);
-
                 accelerometer = board.getModule(Accelerometer.class);
                 accelerometer.configure()
                         .odr(60f)       // Set sampling frequency to 25Hz, or closest valid ODR
@@ -255,16 +229,40 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                             @Override
                             public void apply(Data data, Object... env) {
                                 Log.i("beerguard", "theft!!!!!");
-
                                 vibe();
                                 mp.start();
                                 beer_note("[!] POTENTIAL BEER THEFT");
+                                if (!MyActivity.this.is_there_a_current_THEFT_alert) {
+                                    MyActivity.this.is_there_a_current_THEFT_alert = true;
+                                    new Thread() {
+                                        public void run() {
+                                            MyActivity.this.runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    AlertDialog.Builder builder;
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                                        builder = new AlertDialog.Builder(MyActivity.this, android.R.style.Theme_Material_Dialog_Alert);
+                                                    } else {
+                                                        builder = new AlertDialog.Builder(MyActivity.this);
+                                                    }
+                                                    builder.setTitle("Beerguard: ALERT")
+                                                            .setMessage("[!] YOUR BEER IS UNDER SIEGE")
+                                                            .setPositiveButton("k", new DialogInterface.OnClickListener() {
+                                                                @Override
+                                                                public void onClick(DialogInterface dialog, int which) {
+                                                                    mp.pause();
+                                                                    MyActivity.this.is_there_a_current_THEFT_alert = false;
+                                                                }
+                                                            })
+                                                            .setIcon(R.drawable.ic_launcher_background)
+                                                            .show();
 
-                                bluetooth_alert("Beerguard: ALERT", "[!] YOUR BEER IS UNDER SIEGE");
+                                                }
+                                            });
+                                        }
+                                    }.start();
 
-
-
-
+                                }
 
                             }
                         }).to().filter(Comparison.EQ, 1).stream(new Subscriber() {
@@ -275,35 +273,22 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                         }).end();
                     }
                 });
-
-
             }
+
         }).continueWith(new Continuation<Route, Void>() {
             @Override
             public Void then(Task<Route> task) throws Exception {
                 if (task.isFaulted()) {
                     Log.w("beerguard", "Failed to configure app, " + task.getError());
-
-                    /**
-                     *
-                     * problem: java.lang.IllegalStateException is sometimes called. need to catch this exception
-                     *
-                     */
-
-
-
+                    bluetooth_alert("Beerguard: ALERT", "Ooops! The app failed to configure! Possible reasons:\n*the board is too far away\n*something is wrong with your bluetooth. reset your bluetooth", false, false);
 
                 } else {
                     Log.i("beerguard", "App successfully configured");
-
-
                 }
                 return null;
             }
         });
-
     }
-
 
     private void beer_note(String dialog)
     {
@@ -317,30 +302,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         NotificationManagerCompat n_manager = NotificationManagerCompat.from(this);
         n_manager.notify(1, mBuilder.build());
     }
-
-    private void alarm_sound()
-    {
-
-        MediaPlayer mp = MediaPlayer.create(this, R.raw.alarm);
-        CountDownTimer ctd = new CountDownTimer(30000, 1000) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                mp.start();
-            }
-
-            @Override
-            public void onFinish() {
-                mp.stop();
-
-            }
-        };
-        ctd.start();
-
-
-    }
-
-
-
 
 
     // temperature reading/vibration
@@ -357,14 +318,46 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     @Override
                     public void apply(Data data, Object... env) {
                         Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class).toString());
-
-
-                        if(data.value(Float.class).floatValue() < 10.0) {
+                        if(data.value(Float.class).floatValue() < 15.0) {
                             Log.i("beerguard", "[!] BEER IS READY");
                             accelerometer.stop();
                             accelerometer.acceleration().stop();
                             beer_note("[*] BEER IS READY :)");
-                            bluetooth_alert("Beerguard", "[*] Your beer is ready");
+                            //CHECK IF CURRENT ALERT
+                            //bluetooth_alert("Beerguard", "[*] Your beer is ready", true, false );
+                            if(!MyActivity.this.is_there_a_current_TEMP_alert)
+                            {
+                                MyActivity.this.is_there_a_current_TEMP_alert = true;
+                                new Thread(){
+                                    public void run(){
+                                        MyActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                AlertDialog.Builder builder;
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                                    builder = new AlertDialog.Builder(MyActivity.this, android.R.style.Theme_Material_Dialog_Alert);
+                                                } else {
+                                                    builder = new AlertDialog.Builder(MyActivity.this);
+                                                }
+                                                builder.setTitle("Beerguard: GOOD NEWS!")
+                                                        .setMessage("[*] YOUR BEER IS READY")
+                                                        .setPositiveButton("k", new DialogInterface.OnClickListener() {
+                                                            @Override
+                                                            public void onClick(DialogInterface dialog, int which) {
+
+                                                                MyActivity.this.is_there_a_current_TEMP_alert = false;
+                                                            }
+                                                        })
+                                                        .setIcon(R.drawable.ic_launcher_background)
+                                                        .show();
+
+                                            }
+                                        });
+                                    }
+                                }.start();
+
+                            }
+
                         }
                         MyActivity.this.saved_temp = data.value(Float.class).toString();
 
@@ -375,14 +368,37 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         }).continueWith(new Continuation<Route, Void>() {
             @Override
             public Void then(Task<Route> task) throws Exception {
-                temp_sensor.read();
+                hand = new Handler();
+                int delay = 10000;
+                run_temp = new Runnable() {
+                    @Override
+                    public void run() {
+                        if(!MyActivity.this.is_there_a_current_TEMP_alert)
+                        {
+                            if(!MyActivity.this.shutdown)
+                            {
+                                temp_sensor.read();
+                                celc.setText(saved_temp);
+                                hand.postDelayed(run_temp, delay);
+                            }
+                        }
+                    }
+                };
+                hand.post(run_temp);
                 return null;
             }
         });
 
 
-    }
 
+
+
+
+
+
+
+
+    }
 
 
 
