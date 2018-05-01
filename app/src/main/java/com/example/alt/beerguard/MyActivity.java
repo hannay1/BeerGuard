@@ -309,6 +309,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     {
         final Temperature temperature = board.getModule(Temperature.class);
         final Temperature.Sensor temp_sensor = temperature.findSensors(Temperature.SensorType.PRESET_THERMISTOR)[0];
+        MediaPlayer mp = MediaPlayer.create(this, R.raw.ready);
         temp_sensor.addRouteAsync(new RouteBuilder() {
             @Override
             public void configure(RouteComponent source) {
@@ -323,6 +324,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                             accelerometer.stop();
                             accelerometer.acceleration().stop();
                             beer_note("[*] BEER IS READY :)");
+                            mp.start();
                             //CHECK IF CURRENT ALERT
                             //bluetooth_alert("Beerguard", "[*] Your beer is ready", true, false );
                             if(!MyActivity.this.is_there_a_current_TEMP_alert)
@@ -346,6 +348,8 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                                             public void onClick(DialogInterface dialog, int which) {
 
                                                                 MyActivity.this.is_there_a_current_TEMP_alert = false;
+                                                                mp.pause();
+
                                                             }
                                                         })
                                                         .setIcon(R.drawable.ic_launcher_background)
