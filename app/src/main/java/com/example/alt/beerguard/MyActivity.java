@@ -1,7 +1,6 @@
 package com.example.alt.beerguard;
 
 import android.app.AlertDialog;
-import com.mbientlab.metawear.module.DataProcessor;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.ComponentName;
@@ -12,7 +11,6 @@ import android.content.ServiceConnection;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Vibrator;
@@ -22,8 +20,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
-
-
 import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
@@ -36,14 +32,10 @@ import com.mbientlab.metawear.builder.filter.ThresholdOutput;
 import com.mbientlab.metawear.builder.function.Function1;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.Temperature;
-
-
-import java.util.concurrent.TimeoutException;
-
 import bolts.Continuation;
 import bolts.Task;
-public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
+public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     private TextView celc;
     private BtleService.LocalBinder serviceBinder;
@@ -59,13 +51,9 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     @Override
     public void onCreate(Bundle savedInstanceState){
-
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
         celc = findViewById(R.id.temperature_print);
-
-
-
         findViewById(R.id.start).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -73,23 +61,17 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 // start accelerometer
                 MyActivity.this.is_there_a_current_TEMP_alert = false;
                 MyActivity.this.shutdown = false;
-
-                try {
-                   accelerometer.acceleration().start();
-                   accelerometer.start();
-                   readTemp();
-
-
-                }catch(java.lang.NullPointerException npe)
+                if(!MyActivity.this.shutdown)
                 {
-
-
-                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected", false, false);
-
+                    try {
+                        accelerometer.acceleration().start();
+                        accelerometer.start();
+                        readTemp();
+                    }catch(java.lang.NullPointerException npe)
+                    {
+                        bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
+                    }
                 }
-
-
-
             }
         });
         findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
@@ -102,11 +84,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     MyActivity.this.shutdown = true;
                 }catch(java.lang.NullPointerException npe){
                     Log.i("beerguard", "Perhaps bluetooth is off? ");
-                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected", false, false);
-
-
-
-
+                    bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
                 }
             }
         });
@@ -124,9 +102,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 this, Context.BIND_AUTO_CREATE);
     }
 
-
-
-    public void bluetooth_alert(String title_alert, String message, boolean stop_monitor, boolean stop_theft)
+    public void bluetooth_alert(String title_alert, String message)
     {
 
         new Thread(){
@@ -145,34 +121,21 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                 .setPositiveButton("k", new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
-
-
-
-
                                     }
                                 })
                                 .setIcon(R.drawable.ic_launcher_background)
                                 .show();
-
                     }
                 });
             }
         }.start();
-
-
     }
-
-
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-
         // Unbind the service when the activity is destroyed
-
         getApplicationContext().unbindService(this);
-
-
 
     }
 
@@ -180,10 +143,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     public void onServiceConnected(ComponentName name, IBinder service) {
         serviceBinder = (BtleService.LocalBinder) service;
         Log.i("beerguard", "Service Connected");
-
         this.retrieveBoard(this.mac_addr);
-
-
     }
 
     @Override
@@ -256,14 +216,11 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                                             })
                                                             .setIcon(R.drawable.ic_launcher_background)
                                                             .show();
-
                                                 }
                                             });
                                         }
                                     }.start();
-
                                 }
-
                             }
                         }).to().filter(Comparison.EQ, 1).stream(new Subscriber() {
                             @Override
@@ -280,7 +237,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             public Void then(Task<Route> task) throws Exception {
                 if (task.isFaulted()) {
                     Log.w("beerguard", "Failed to configure app, " + task.getError());
-                    bluetooth_alert("Beerguard: ALERT", "Ooops! The app failed to configure! Possible reasons:\n*the board is too far away\n*something is wrong with your bluetooth. reset your bluetooth", false, false);
+                    bluetooth_alert("Beerguard: ALERT", "Ooops! The app failed to configure! Possible reasons:\n*the board is too far away\n*something is wrong with your bluetooth. reset your bluetooth");
 
                 } else {
                     Log.i("beerguard", "App successfully configured");
@@ -303,7 +260,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         n_manager.notify(1, mBuilder.build());
     }
 
-
     // temperature reading/vibration
     public void readTemp()
     {
@@ -314,8 +270,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             @Override
             public void configure(RouteComponent source) {
                 source.stream(new Subscriber() {
-
-
                     @Override
                     public void apply(Data data, Object... env) {
                         Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class).toString());
@@ -327,8 +281,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                             mp.start();
                             //CHECK IF CURRENT ALERT
                             //bluetooth_alert("Beerguard", "[*] Your beer is ready", true, false );
-                            if(!MyActivity.this.is_there_a_current_TEMP_alert)
-                            {
+                            if(!MyActivity.this.is_there_a_current_TEMP_alert) {
                                 MyActivity.this.is_there_a_current_TEMP_alert = true;
                                 new Thread(){
                                     public void run(){
@@ -346,26 +299,19 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                                         .setPositiveButton("k", new DialogInterface.OnClickListener() {
                                                             @Override
                                                             public void onClick(DialogInterface dialog, int which) {
-
                                                                 MyActivity.this.is_there_a_current_TEMP_alert = false;
                                                                 mp.pause();
-
                                                             }
                                                         })
                                                         .setIcon(R.drawable.ic_launcher_background)
                                                         .show();
-
                                             }
                                         });
                                     }
                                 }.start();
-
                             }
-
                         }
                         MyActivity.this.saved_temp = data.value(Float.class).toString();
-
-
                     }
                 });
             }
@@ -379,12 +325,9 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     public void run() {
                         if(!MyActivity.this.is_there_a_current_TEMP_alert)
                         {
-                            if(!MyActivity.this.shutdown)
-                            {
-                                temp_sensor.read();
-                                celc.setText(saved_temp);
-                                hand.postDelayed(run_temp, delay);
-                            }
+                            temp_sensor.read();
+                            celc.setText(saved_temp);
+                            hand.postDelayed(run_temp, delay);
                         }
                     }
                 };
@@ -392,18 +335,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 return null;
             }
         });
-
-
-
-
-
-
-
-
-
-
     }
-
-
 
 }
