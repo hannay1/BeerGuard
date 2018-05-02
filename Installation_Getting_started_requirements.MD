@@ -1,6 +1,6 @@
 # BeerGuard - Installation/Getting started/Hardware softare requirements
 
-##Hardware/software requirements:
+## Hardware/software requirements:
 
 * MetaWear C board: https://mbientlab.com/product/metawearc/
 
@@ -39,6 +39,8 @@ This app is designed to be installed via Android Studio
 
 * Run the app, accept any privileges because why not. This should install the app onto your phone
 
+* (Optional) disable Developer Options as there is no good reason to have them anymore
+
 You may now run the app independently from Android Studio
 
 ## Getting started
@@ -54,6 +56,9 @@ You may now run the app independently from Android Studio
 * Press "stop" to stop the cooling cycle once the desired temperature is reached/to stop the alarms from going off
 
 * There is no guarantee that the beer will be cold enough. But it reports the temperature of the inside of your fridge really well, so that is a plus. At least the anti-theft function works well. Unless you move the sensor out from the fridge r e a l l y  s l o w l y. This is because the MetaWear C board isn't that sensitive
+
+* Press "exit" to quit the app. 
+
 
 
 
