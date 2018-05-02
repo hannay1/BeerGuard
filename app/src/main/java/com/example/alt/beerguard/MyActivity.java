@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,9 +19,6 @@ import android.support.v4.app.NotificationManagerCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
@@ -41,6 +37,8 @@ import bolts.Task;
 
 public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
+
+    //Global things that need to be global
     private TextView celc;
     private BtleService.LocalBinder serviceBinder;
     private MetaWearBoard board;
@@ -53,9 +51,12 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     private boolean temp_done;
     private boolean is_there_a_current_THEFT_alert;
     private boolean is_there_a_current_TEMP_alert;
-    
+
     @Override
     public void onCreate(Bundle savedInstanceState){
+        /*
+            handles on-click events, and calls to the accel./temp streaming again functionalities
+         */
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
         celc = findViewById(R.id.temperature_print);
@@ -63,20 +64,16 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             @Override
             public void onClick(View v) {
                 Log.i("beerguard", "start");
-                // start accelerometer
-
-
-
-
+                    /*
+                    if already started, do not start accelerometer/temp streaming
+                    catches bluetooth errors
+                    */
                 if(!MyActivity.this.already_started)
                 {
                     try {
                         accelerometer.acceleration().start();
                         accelerometer.start();
                         readTemp();
-
-
-
                     }catch(java.lang.NullPointerException npe)
                     {
                         bluetooth_alert("Bluetooth error", "Please check if bluetooth is enabled/the board is connected");
@@ -84,15 +81,14 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     MyActivity.this.already_started = true;
                     MyActivity.this.temp_done = false;
                     Log.i("beerguard", "already_started: true ");
-
-
-
                 }
-
-
             }
         });
         findViewById(R.id.stop).setOnClickListener(new View.OnClickListener() {
+            /*
+            stops accelerometer and sets booleans to prevent futher stopping.
+            catches null pointer exceptions in case bluetooth is not working
+             */
             @Override
             public void onClick(View v) {
                 Log.i("beerguard", "stop");
@@ -108,6 +104,9 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
             }
         });
         findViewById(R.id.exit).setOnClickListener(new View.OnClickListener() {
+            /*
+                board teardown, system exit on exit
+             */
             @Override
             public void onClick(View v) {
                 board.tearDown();
@@ -122,7 +121,9 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     public void bluetooth_alert(String title_alert, String message)
     {
-
+        /*
+            generic alert for bluetooth/other errors
+         */
         new Thread(){
             public void run(){
                 MyActivity.this.runOnUiThread(new Runnable() {
@@ -154,7 +155,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         super.onDestroy();
         // Unbind the service when the activity is destroyed
         getApplicationContext().unbindService(this);
-
     }
 
     @Override
@@ -183,7 +183,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         vib.vibrate(1000);
     }
 
-    //retrieving board/accelerometer. Taken from the FreeFall demo app at https://mbientlab.com/tutorials/SDKs.html#freefall-app
+    //retrieving board/accelerometer. Modified from the FreeFall demo app at https://mbientlab.com/tutorials/SDKs.html#freefall-app
     private void retrieveBoard(final String mac_addr) {
         final BluetoothManager btManager =
                 (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
@@ -207,11 +207,17 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                             @Override
                             public void apply(Data data, Object... env) {
                                 Log.i("beerguard", "theft!!!!!");
-                                vibe();
-                                mp.start();
+                                vibe(); //vibration
+                                mp.start(); //starts media player object to play alarm sound
                                 beer_note("[!] POTENTIAL BEER THEFT");
                                 if (!MyActivity.this.is_there_a_current_THEFT_alert) {
                                     MyActivity.this.is_there_a_current_THEFT_alert = true;
+                                    /*
+                                        new thread for negative alert
+
+                                        boolean logic is done once dismissing the alert
+                                        so the temp/accel. functionalities don't conflict
+                                     */
                                     new Thread() {
                                         public void run() {
                                             MyActivity.this.runOnUiThread(new Runnable() {
@@ -230,7 +236,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                                                 public void onClick(DialogInterface dialog, int which) {
                                                                     mp.pause();
                                                                     MyActivity.this.is_there_a_current_THEFT_alert = false;
-
                                                                 }
                                                             })
                                                             .setIcon(R.drawable.ic_launcher_background)
@@ -250,14 +255,22 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     }
                 });
             }
-
         }).continueWith(new Continuation<Route, Void>() {
+            /*
+                   This is the "fix" for the
+                   Timeout error that happens at random
+
+                   Fix is physically removing the battery from the board, and then re-insert
+                   the battery.
+
+                   using board.tearDown() on exit does not seem to fix this either for some reason
+             */
             @Override
             public Void then(Task<Route> task) throws Exception {
                 if (task.isFaulted()) {
                     Log.w("beerguard", "Failed to configure app, " + task.getError());
-                    bluetooth_alert("Beerguard: ALERT", "Ooops! The app failed to configure! Possible reasons:\n*the board is too far away\n*something is wrong with your bluetooth. reset your bluetooth");
-
+                    bluetooth_alert("Beerguard: ALERT", "Ooops! The app failed to configure! Possible reasons:\n*the board is too far away\n*something is wrong with your bluetooth. reset your bluetooth" +
+                            "\nOR\n Remove and re-insert the battery on the board");
                 } else {
                     Log.i("beerguard", "App successfully configured");
                 }
@@ -268,20 +281,24 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
 
     private void beer_note(String dialog)
     {
+        /*
+            generic notification invocation method, used for both positive and negative responses
+         */
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, "1")
                 .setSmallIcon(R.drawable.ic_launcher_background)
                 .setContentTitle("BeerGuard")
                 .setContentText(dialog)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true);
-
         NotificationManagerCompat n_manager = NotificationManagerCompat.from(this);
         n_manager.notify(1, mBuilder.build());
     }
 
-    // temperature reading/vibration
+
     public void readTemp()
     {
+        // temperature reading/vibration
+        // also deals with positive alerts (when the correct temp is reached
         final Temperature temperature = board.getModule(Temperature.class);
         final Temperature.Sensor temp_sensor = temperature.findSensors(Temperature.SensorType.PRESET_THERMISTOR)[0];
         MediaPlayer mp = MediaPlayer.create(this, R.raw.ready);
@@ -292,14 +309,17 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     @Override
                     public void apply(Data data, Object... env) {
                         Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class).toString());
-                        if(data.value(Float.class).floatValue() < 10.0) {
+                        if(data.value(Float.class).floatValue() < 10.0) { //HARD CODED TEMP VALUE.
                             Log.i("beerguard", "[!] BEER IS READY");
                             accelerometer.stop();
                             accelerometer.acceleration().stop();
                             beer_note("[*] BEER IS READY :)");
-                            mp.start();
+                            mp.start(); //positive alarm sound
                             //CHECK IF CURRENT ALERT
-                            //bluetooth_alert("Beerguard", "[*] Your beer is ready", true, false );
+                            /*
+                                only runs if there is no current temperature alert
+                                uses a new thread for the positive alarm, same as accelerometer data
+                             */
                             if(!MyActivity.this.is_there_a_current_TEMP_alert) {
                                 MyActivity.this.is_there_a_current_TEMP_alert = true;
                                 new Thread(){
@@ -337,6 +357,11 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
         }).continueWith(new Continuation<Route, Void>() {
             @Override
             public Void then(Task<Route> task) throws Exception {
+                /*
+                * handler for temperature polling.
+                * only runs if the cooling period is over (beer is cold enough)
+                * and if there is no current positive alert (alert for beer is cold enough)
+                * */
                 hand = new Handler();
                 int delay = 10000;
                 run_temp = new Runnable() {
@@ -349,7 +374,6 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                                 temp_sensor.read();
                                 celc.setText(saved_temp);
                                 hand.postDelayed(run_temp, delay);
-
                             }else
                             {
                                 hand.removeCallbacks(run_temp);
@@ -361,8 +385,5 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                 return null;
             }
         });
-
     }
-
-
 }
