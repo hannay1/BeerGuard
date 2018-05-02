@@ -37,7 +37,7 @@ This app is designed to be installed via Android Studio
 
 * Enable Bluetooth on the phone
 
-* IMPORTANT: CHANGE THE GLOBAL "mac_addr" VARIABLE TO YOUR OWN METAWEAR MAC ADDRESS
+* IMPORTANT: CHANGE THE GLOBAL "mac_addr" VARIABLE in MyActivity.java TO YOUR OWN METAWEAR MAC ADDRESS
 
 * Run the app, accept any privileges because why not. This should install the app onto your phone
 
