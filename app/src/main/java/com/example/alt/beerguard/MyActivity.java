@@ -55,7 +55,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
     @Override
     public void onCreate(Bundle savedInstanceState){
         /*
-            handles on-click events, and calls to the accel./temp streaming again functionalities
+            handles on-click events, and calls to the accel./temp streaming methods
          */
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
@@ -309,7 +309,7 @@ public class MyActivity extends AppCompatActivity implements ServiceConnection {
                     @Override
                     public void apply(Data data, Object... env) {
                         Log.i("beerguard", "Temperature (C) = " +  data.value(Float.class).toString());
-                        if(data.value(Float.class).floatValue() < 10.0) { //HARD CODED TEMP VALUE.
+                        if(data.value(Float.class).floatValue() < 10.0) { //HARD CODED TEMP VALUE. 10 degrees is the ideal beer temperature
                             Log.i("beerguard", "[!] BEER IS READY");
                             accelerometer.stop();
                             accelerometer.acceleration().stop();
